@@ -1,4 +1,1698 @@
-physics_interface.f90:#if defined (MICROCODE)      
-physics_interface.f90:#if defined (MICROCODE)
-physics_interface.f90:#if defined (MICROCODE)
-physics_interface.f90:#if defined (MICROCODE)
+diff ./ini_3d_module.F ../../../cloud/mog/CODE-gate/ini_3d_module.F
+17,19d16
+< #if defined (RADCODE)
+< USE rrtm_vars, only: sstxy,albdo
+< #endif 
+140d136
+< 
+147d142
+<       if (my_task .eq. 0) print*, T8,P8,QV8,K
+161d155
+< 
+242d235
+< 
+327d319
+<       if (hx(I,J) .GT. 1) TG(I,J) = THBAR(INT(hx(I,J)))*pibar(hx(I,J))
+443,444d434
+<       Z3DX(I,J,K)=(W3D(I,J+1,K)-W3D(I,J,K))/DYNEW &
+<                  -(U3DY(I,J,K+1)-U3DY(I,J,K))*FNZ(K)/DZ
+490,498c480
+< #if defined (RADCODE)
+<   
+<       albdo = 0.30
+< #endif    
+< #if defined (DIFFUSION)
+<       call turb_3d_ini
+< #endif
+< 
+<  
+---
+>       
+517a500
+> 
+575a559
+> 
+580a565,568
+> #if defined (DIFFUSION)
+>       call turb_3d_ini
+> #endif
+> 
+Only in ./: .ini_3d_module.F.swo
+Only in ./: land_module.F
+diff ./ldmain.F ../../../cloud/mog/CODE-gate/ldmain.F
+7c7
+< !   *                   Jung, J.-H., and A. Arakawa, 2005:               *
+---
+> !   *                   Jung, J.-H., and A. Arakawa, 2005:               * 
+14,15c14,15
+< !   1. Prognostic Variables:
+< !      vorticity components     (Z3DX, Z3DY, Z3DZ)
+---
+> !   1. Prognostic Variables: 
+> !      vorticity components     (Z3DX, Z3DY, Z3DZ) 
+34c34
+< !   3. Except for the turbulence,
+---
+> !   3. Except for the turbulence, 
+39c39
+< !   5. For time differencing, Adams-Bashforth 2nd-order scheme is used.
+---
+> !   5. For time differencing, Adams-Bashforth 2nd-order scheme is used. 
+49,50c49,50
+< !    (Note: This is not explicitly set all the time because the periodic
+< !           condition is assumed throughout the code.)
+---
+> !    (Note: This is not explicitly set all the time because the periodic 
+> !           condition is assumed throughout the code.) 
+52,54c52,54
+< !    CORIOLIS   -- INCLUDING THE CORIOLIS FORCE
+< !    DIFFUSION  -- LINEAR DISSIPATION / TURBULENCE
+< !    AREAMN     -- FIX THE AREA MEAN OF HORIZONTAL WIND (INSTANT NUDGING)
+---
+> !    CORIOLIS   -- INCLUDING THE CORIOLIS FORCE 
+> !    DIFFUSION  -- LINEAR DISSIPATION / TURBULENCE  
+> !    AREAMN     -- FIX THE AREA MEAN OF HORIZONTAL WIND (INSTANT NUDGING)  
+68,70c68,70
+< !          (B02 is for restart and in double precision)
+< !    FT09: Dataset I: initial field of basic fields
+< !    FT09: Dataset R: Radiation fields
+---
+> !          (B02 is for restart and in double precision) 
+> !    FT09: Dataset I: initial field of basic fields 
+> !    FT09: Dataset R: Radiation fields 
+80,118c80,107
+<     USE kinds
+<     USE parmsld
+<     USE constld
+<     USE const3d
+<     USE ldoutput
+<     USE ldoutput_nc
+<     USE output_nc
+<     USE ldinput
+<     USE ab_3d_module
+<     USE time_manager_module
+<     USE timer
+<     USE domain_decomposition
+<     USE output_nc
+<     USE petscsys
+<     USE petsc_vvm_solver, only: petsc_solver_finalize
+<     USE vertical_adaptive
+< 
+<     IMPLICIT NONE
+< 
+<     !      INTEGER rnk_wrld,npc_wrld,ierr
+< 
+<     INTEGER (KIND=int_kind) ::    &
+<         msize,      & ! processes specified in mpirun
+<         itt,        & ! time step count
+<         ittnow,     & ! time step count
+<         n1,         & ! AB forcing time index for previous timestep
+<         n2,         & ! AB forcing time index for current timestep
+<         nswap,      & ! AB change
+<         inner_itt     ! Use to manage the inner Time step if needed
+< 
+<     REAL (KIND=dbl_kind)   ::    &
+<         elapse_time ,   &  ! Use to manage the inner Time run
+<         inner_dt    ,   &
+<         origin_dt   ,   &
+<         itt_align   ,   &
+<         ttl_time
+<     INTEGER (KIND=int_kind)  ::  &
+<         itt_record
+< 
+---
+>       USE kinds
+>       USE parmsld
+>       USE constld
+>       USE const3d
+>       USE ldoutput
+>       USE ldoutput_nc
+>       USE output_nc
+>       USE ldinput
+>       USE ab_3d_module
+>       USE time_manager_module
+>       USE timer
+>       USE domain_decomposition
+>       USE output_nc
+>       USE petscsys
+>       USE petsc_vvm_solver, only: petsc_solver_finalize
+> 
+> 
+>       IMPLICIT NONE
+>       
+> !      INTEGER rnk_wrld,npc_wrld,ierr
+> 
+>       INTEGER (KIND=int_kind) ::    &
+>          msize,      & ! processes specified in mpirun
+>          itt,        & ! time step count
+>          ittnow,     & ! time step count
+>          n1,         & ! AB forcing time index for previous timestep
+>          n2            ! AB forcing time index for current timestep
+>       
+122,166c111,152
+<     CALL PetscInitialize(PETSC_NULL_CHARACTER,mpierr)
+<     call domain_init
+< 
+<     call timer_start('total vvm')
+< 
+<     call timer_start('initialize')
+<     CALL INPUT_3D ( ITT )
+<     call timer_stop('initialize')
+< 
+<     if(my_task == 0) write(6,*) 'ITTOUT=',ITT
+< 
+<       !  Initialization
+<     IF (ITT .EQ. 0) THEN
+< 
+<     IF ( ITTADD .LE. 0 ) STOP 101
+<     call timer_start('output')
+<     CALL OUTCON_3D  (8)
+<     ! CALL OUTPUT_3D  (ITT,9)
+<     ! CALL XSEC_3D ( ITT )
+<     CALL XSEC_CDF ( ITT )
+<     call timer_stop('output')
+< 
+< 
+<     ITT = ITT + 1
+<     if(my_task == 0) write(6,*) 'ITT=',ITT
+< 
+<     !  USE FORWARD SCHEME TO INITIALIZE
+< 
+<     A = DT
+<     B = 0.
+<     N1 = MOD ( ITT    , 2 ) + 1
+<     N2 = MOD ( ITT - 1, 2 ) + 1
+<     lc35 = MOD ( ITT,   NXS ) .EQ. 0
+<     START = ITT .GT. ITINIT
+< 
+<     CALL TIME_MANAGER(ITT)
+< 
+<     PASS_SMALL_DT = DT
+< 
+<     CALL AB_3D ( N1, N2, ITT )
+<     call timer_start('output')
+< 
+<     IF ( lc35 ) CALL XSEC_CDF ( ITT )
+<         call timer_stop('output')
+<     ENDIF
+---
+>       CALL PetscInitialize(PETSC_NULL_CHARACTER,mpierr)
+>       call domain_init
+>       
+>       call timer_start('total vvm')
+> 
+>       call timer_start('initialize')
+>       CALL INPUT_3D ( ITT )
+>       call timer_stop('initialize')
+> 
+>       if(my_task == 0) write(6,*) 'ITTOUT=',ITT
+> 
+>       IF (ITT .EQ. 0) THEN
+> 
+>          IF ( ITTADD .LE. 0 ) STOP 101
+>          call timer_start('output')
+>          CALL OUTCON_3D  (8)
+> !         CALL OUTPUT_3D  (ITT,9)
+> !         CALL XSEC_3D ( ITT )
+>          CALL XSEC_CDF ( ITT )
+>          call timer_stop('output')
+>       
+>       
+>          ITT = ITT + 1
+>          if(my_task == 0) write(6,*) 'ITT=',ITT
+> 
+> !     USE FORWARD SCHEME TO INITIALIZE
+> 
+>          A = DT
+>          B = 0.
+>          N1 = MOD ( ITT    , 2 ) + 1
+>          N2 = MOD ( ITT - 1, 2 ) + 1
+>          lc35 = MOD ( ITT,   NXS ) .EQ. 0
+>          START = ITT .GT. ITINIT
+> 
+>          CALL TIME_MANAGER(ITT)
+> 
+>          CALL AB_3D ( N1, N2, ITT )
+>          call timer_start('output')
+> !         IF ( lc35 ) CALL XSEC_3D ( ITT )
+>          IF ( lc35 ) CALL XSEC_CDF ( ITT )
+>           call timer_stop('output')
+>       ENDIF
+170,171c156,157
+<     A =   3. / 2. * DT
+<     B = - 1. / 2. * DT
+---
+>       A =   3. / 2. * DT
+>       B = - 1. / 2. * DT
+173,185c159,179
+<     ITTNOW = ITT  + 1
+<     origin_dt = DT   !  Mars (20141225) add conserve DT
+<     if ( my_task == 0 ) open(unit=12345,file='iter_record.txt',status='unknown')
+< 
+<     N1 = MOD ( ITTNOW , 2 ) + 1
+<     N2 = MOD ( ITTNOW - 1, 2 ) + 1
+< 
+<     !  Simluation Run
+<     elapse_time = ( mod( ITTNOW , NXSAVG ) ) * origin_dt
+<     ttl_time    = elapse_time
+<     ITT = ITTNOW
+<     itt_align = 0.
+<     do while( ITT <= ITTMAX )
+---
+>       ITTNOW = ITT  + 1
+>       
+>       DO 1 ITT = ITTNOW, ITTMAX
+>          if(my_task == 0)  write(6,*) 'ITT=',ITT
+> 
+>          CALL TIME_MANAGER(ITT)
+>          N1 = MOD ( ITT    , 2 ) + 1
+>          N2 = MOD ( ITT - 1, 2 ) + 1
+>          lc35 = MOD ( ITT,   NXS ) .EQ. 0
+>          START = ITT .GE. ITINIT
+> 
+>          CALL AB_3D ( N1, N2, ITT )
+> 
+>          call timer_start('output')
+> !         IF ( lc35 ) CALL XSEC_3D ( ITT )
+>          IF ( lc35 ) CALL XSEC_CDF ( ITT )
+> !         IF ( MOD ( ITT, NRESTART ) .EQ. 0 ) CALL RSTART ( ITT, 13 )  ! This is new addition.
+>          IF ( MOD ( ITT, NRESTART ) .EQ. 0 ) CALL rstart_nc ( ITT, 13 )  ! This is new addition.
+>          call timer_stop('output')
+>       
+>     1 CONTINUE
+187,252c181,182
+<         if(my_task == 0)  write(6,*) 'ITT=',ITT
+<         CALL TIME_MANAGER(ITT)
+<         START = ITT .GE. ITINIT
+< 
+<         ! Mars (20141221) add change Z structure code START
+<         DT   = origin_dt
+<         itt_record  = 0
+<         
+<         
+< 
+<         call  maintain_Time(  ( NXSAVG  * origin_dt ) - elapse_time , inner_dt )
+<         ! inner_dt = origin_dt  ! if want to use original dt , not var version
+<         DT = inner_dt
+<         itt_align = itt_align + inner_dt
+<         elapse_time = elapse_time + inner_dt
+<         ttl_time    = ttl_time + inner_dt
+<         
+<         if  ( ( ( itt_align - inner_dt ) < origin_dt  .and. itt_align  >= origin_dt   ) ) then
+<             ITT = ITT + 1
+<             itt_align = itt_align - origin_dt
+<         else if ( ( itt_align - inner_dt ) < origin_dt  .and. abs( itt_align  - origin_dt ) < 1E-9 ) then
+<             ITT = ITT + 1
+<             itt_align = 0.
+<         endif      
+<         
+<         
+<         A = 3./2. * DT
+<         B = -1./2. * DT
+< 
+<         PASS_SMALL_DT = DT
+<         PASS_BIG_DT   = origin_dt
+< 
+<         CALL AB_3D ( N1, N2, ITT )        
+< 
+<         DT   = origin_dt ! move set original dt here
+<         
+<         itt_record = itt_record + 1
+<         NSWAP = N1
+<         N1    = N2
+<         N2    = NSWAP
+< 
+<         
+<         if ( my_task == 0 ) write(12345,'(A4,I6,A13,F10.4,A12,F10.4,A8,F15.12,A9,F10.6)')  &
+<             & 'ITT=',ITT,', ElapseTime=',elapse_time ,', totalTime=' ,ttl_time,&
+<               ' ,align=',(origin_dt-itt_align),' ,var_dt=',inner_dt
+<        
+< 
+<         lc35 = MOD ( ITT,   NXS ) .EQ. 0
+< 
+<         call timer_start('output')
+<         IF ( lc35 ) CALL XSEC_CDF ( ITT )
+<         IF ( MOD ( ITT, NRESTART ) .EQ. 0 ) CALL rstart_nc ( ITT, 13 )  ! This is new addition.
+< 
+<         if ( abs ( ( NXSAVG  * origin_dt ) - elapse_time ) < 1E-9 ) then
+<             elapse_time = 0.
+<             if ( my_task == 0 ) write(12345,*) '--OUTPUT--'
+<         endif          
+<         call timer_stop('output')
+<         
+<     ENDDO
+< 
+<     ! Mars (20141221) add output iteration
+<     if(my_task == 0) close(12345)
+< 
+< #if defined (PARALLELIO)
+<     call output_nc_close
+---
+> #if defined (PARALLELIO) 
+>       call output_nc_close
+254c184
+<     if (my_task == 0) call output_nc_close
+---
+>       if (my_task == 0) call output_nc_close
+257,258c187,188
+<     call timer_stop('total vvm')
+<     if(my_task == 0) call timer_write('vvm')
+---
+>         call timer_stop('total vvm')
+>         if(my_task == 0) call timer_write('vvm')
+260,261c190,191
+<     CALL petsc_solver_finalize
+<     CALL PETSCFINALIZE(mpierr)
+---
+>        CALL petsc_solver_finalize
+>        CALL PETSCFINALIZE(mpierr)
+264c194
+<     STOP 100
+---
+>       STOP 100
+diff ./ldoutput_nc.F ../../../cloud/mog/CODE-gate/ldoutput_nc.F
+26,31d25
+< #if defined (DIFFUSION)
+< USE TURB_3D_module
+< #if defined (LSM)
+< USE land_module
+< #endif
+< #endif
+42c36
+<          IVAR6=6,IVAR7=3,IVAR8=2,IVAR9=15,IVAR10=62        !  each output variable class
+---
+>          IVAR6=6,IVAR7=3,IVAR8=2,IVAR9=15                 !  each output variable class
+80,86d73
+< #if defined (DIFFUSION) 
+< #if defined (LSM)
+<       REAL (KIND=tm_kind) :: STD_LSM(mi1,mj1,IVAR10)
+< #endif
+< #endif
+< 
+< !========
+871,875d857
+< #if defined (LSM) 
+<       INTEGER (KIND=int_kind) :: ivar ! index for LSM masking out
+< #endif
+< 
+< 
+883c865
+<       REAL (KIND=dbl_kind) ::  sfmn, fac, dtfac
+---
+>       REAL (KIND=dbl_kind) ::  sfmn, fac
+885,887c867,869
+<       INTEGER (KIND=int_kind)     ::   ibnew, kvar , out_itt   ! mars add
+<       LOGICAL first 
+<       DATA IBNEW/0/, first/.true./, out_itt/-1/
+---
+>       INTEGER (KIND=int_kind)     ::   ibnew, kvar
+>       LOGICAL first
+>       DATA IBNEW/0/, first/.true./
+919,921d900
+< #if defined (LSM)
+<       std_lsm = 0.
+< #endif
+924,925d902
+<    dtfac = PASS_SMALL_DT / DT 
+< 
+938,940c915,916
+<       STD_TM5(I,J,6)=PREC25(I,J)
+<       STD_TM5(I,J,7)=OLR(I,J)
+<       
+---
+>       STD_TM5(I,J,6)=OLR(I,J)
+>       STD_TM5(I,J,7)=PREC25(I,J)
+942,962d917
+< 
+< #if defined (DIFFUSION)
+< #if defined (LSM)
+< 
+<       DO 227 J=1,mj1
+<       DO 227 I=1,mi1
+< !===hchun
+<       STD_LSM(I,J,1)=lST(I,J,1)
+<       STD_LSM(I,J,2)=lST(I,J,2)
+<       STD_LSM(I,J,3)=lST(I,J,3)
+<       STD_LSM(I,J,4)=lST(I,J,4)
+<       STD_LSM(I,J,5)=lSM(I,J,1)
+<       STD_LSM(I,J,6)=lSM(I,J,2)
+<       STD_LSM(I,J,7)=lSM(I,J,3)
+<       STD_LSM(I,J,8)=lSM(I,J,4)
+< !=======
+<   227 CONTINUE
+< #endif
+< #endif
+< 
+< 
+1003,1009c958,964
+<       STD_TM5(I,J,1)=STD_TM5(I,J,1)+UW(I,J)        *  dtfac
+<       STD_TM5(I,J,2)=STD_TM5(I,J,2)+WV(I,J)        *  dtfac
+<       STD_TM5(I,J,3)=STD_TM5(I,J,3)+WTH(I,J)       *  dtfac
+<       STD_TM5(I,J,4)=STD_TM5(I,J,4)+WQV(I,J)       *  dtfac
+<       STD_TM5(I,J,5)=STD_TM5(I,J,5)+SPREC(I,J)     *  dtfac
+<       STD_TM5(I,J,6)=STD_TM5(I,J,6)+PREC25(I,J)    *  dtfac
+<       STD_TM5(I,J,7)=STD_TM5(I,J,7)+OLR(I,J)       *  dtfac
+---
+>       STD_TM5(I,J,1)=STD_TM5(I,J,1)+UW(I,J)
+>       STD_TM5(I,J,2)=STD_TM5(I,J,2)+WV(I,J)
+>       STD_TM5(I,J,3)=STD_TM5(I,J,3)+WTH(I,J)
+>       STD_TM5(I,J,4)=STD_TM5(I,J,4)+WQV(I,J)
+>       STD_TM5(I,J,5)=STD_TM5(I,J,5)+SPREC(I,J)
+>       STD_TM5(I,J,6)=STD_TM5(I,J,6)+OLR(I,J)
+>       STD_TM5(I,J,7)=STD_TM5(I,J,7)+PREC25(I,J)
+1012,1091d966
+< #if defined (DIFFUSION)
+< #if defined (LSM)
+< 
+<       DO 1227 J=1,mj1
+<       DO 1227 I=1,mi1
+< !===hchun
+< ! easy, only average points that apply lsm
+<       if (LU(I,J) .NE. 16) THEN
+<       STD_LSM(I,J,1)=STD_LSM(I,J,1)+lEMISSI(I,J)   *  dtfac 
+<       STD_LSM(I,J,2)=STD_LSM(I,J,2)+lCMC(I,J)      *  dtfac 
+<       STD_LSM(I,J,3)=STD_LSM(I,J,3)+lT1(I,J)       *  dtfac 
+<       STD_LSM(I,J,4)=STD_LSM(I,J,4)+lST(I,J,1)     *  dtfac 
+<       STD_LSM(I,J,5)=STD_LSM(I,J,5)+lST(I,J,2)     *  dtfac 
+<       STD_LSM(I,J,6)=STD_LSM(I,J,6)+lST(I,J,3)     *  dtfac 
+<       STD_LSM(I,J,7)=STD_LSM(I,J,7)+lST(I,J,4)     *  dtfac 
+<       STD_LSM(I,J,8)=STD_LSM(I,J,8)+lSM(I,J,1)     *  dtfac 
+<       STD_LSM(I,J,9)=STD_LSM(I,J,9)+lSM(I,J,2)     *  dtfac 
+<       STD_LSM(I,J,10)=STD_LSM(I,J,10)+lSM(I,J,3)   *  dtfac 
+<       STD_LSM(I,J,11)=STD_LSM(I,J,11)+lSM(I,J,4)   *  dtfac 
+<       STD_LSM(I,J,12)=STD_LSM(I,J,12)+lSL(I,J,1)   *  dtfac 
+<       STD_LSM(I,J,13)=STD_LSM(I,J,13)+lSL(I,J,2)   *  dtfac 
+<       STD_LSM(I,J,14)=STD_LSM(I,J,14)+lSL(I,J,3)   *  dtfac 
+<       STD_LSM(I,J,15)=STD_LSM(I,J,15)+lSL(I,J,4)   *  dtfac 
+<       STD_LSM(I,J,16)=STD_LSM(I,J,16)+lSNOWH(I,J)  *  dtfac 
+<       STD_LSM(I,J,17)=STD_LSM(I,J,17)+lSNEQV(I,J)  *  dtfac 
+<       STD_LSM(I,J,18)=STD_LSM(I,J,18)+lALBEDO(I,J) *  dtfac 
+<       STD_LSM(I,J,19)=STD_LSM(I,J,19)+lCH(I,J)     *  dtfac 
+<       STD_LSM(I,J,20)=STD_LSM(I,J,20)+lCM(I,J)     *  dtfac 
+<       STD_LSM(I,J,21)=STD_LSM(I,J,21)+lETA(I,J)    *  dtfac 
+<       STD_LSM(I,J,22)=STD_LSM(I,J,22)+lFDOWN(I,J)  *  dtfac 
+<       STD_LSM(I,J,23)=STD_LSM(I,J,23)+lEC(I,J)     *  dtfac 
+<       STD_LSM(I,J,24)=STD_LSM(I,J,24)+lEDIR(I,J)   *  dtfac 
+<       STD_LSM(I,J,25)=STD_LSM(I,J,25)+lET(I,J,1)   *  dtfac 
+<       STD_LSM(I,J,26)=STD_LSM(I,J,26)+lET(I,J,2)   *  dtfac 
+<       STD_LSM(I,J,27)=STD_LSM(I,J,27)+lET(I,J,3)   *  dtfac 
+<       STD_LSM(I,J,28)=STD_LSM(I,J,28)+lET(I,J,4)   *  dtfac 
+<       STD_LSM(I,J,29)=STD_LSM(I,J,29)+lETT(I,J)    *  dtfac 
+<       STD_LSM(I,J,30)=STD_LSM(I,J,30)+lESNOW(I,J)  *  dtfac 
+<       STD_LSM(I,J,31)=STD_LSM(I,J,31)+lDRIP(I,J)   *  dtfac 
+<       STD_LSM(I,J,32)=STD_LSM(I,J,32)+lDEW(I,J)    *  dtfac 
+<       STD_LSM(I,J,33)=STD_LSM(I,J,33)+lBETA(I,J)   *  dtfac 
+<       STD_LSM(I,J,34)=STD_LSM(I,J,34)+lETP(I,J)    *  dtfac 
+<       STD_LSM(I,J,35)=STD_LSM(I,J,35)+lSSOIL(I,J)  *  dtfac  
+<       STD_LSM(I,J,36)=STD_LSM(I,J,36)+lFLX1(I,J)   *  dtfac 
+<       STD_LSM(I,J,37)=STD_LSM(I,J,37)+lFLX2(I,J)   *  dtfac 
+<       STD_LSM(I,J,38)=STD_LSM(I,J,38)+lFLX3(I,J)   *  dtfac 
+<       STD_LSM(I,J,39)=STD_LSM(I,J,39)+lSNOMLT(I,J) *  dtfac 
+<       STD_LSM(I,J,40)=STD_LSM(I,J,40)+lSNCOVR(I,J) *  dtfac 
+<       STD_LSM(I,J,41)=STD_LSM(I,J,41)+lRUNOFF1(I,J)*  dtfac 
+<       STD_LSM(I,J,42)=STD_LSM(I,J,42)+lRUNOFF2(I,J)*  dtfac 
+<       STD_LSM(I,J,43)=STD_LSM(I,J,43)+lRUNOFF3(I,J)*  dtfac 
+<       STD_LSM(I,J,44)=STD_LSM(I,J,44)+lRC(I,J)     *  dtfac 
+<       STD_LSM(I,J,45)=STD_LSM(I,J,45)+lPC(I,J)     *  dtfac 
+<       STD_LSM(I,J,46)=STD_LSM(I,J,46)+lRSMIN(I,J)  *  dtfac 
+<       STD_LSM(I,J,47)=STD_LSM(I,J,47)+lXLAI(I,J)   *  dtfac 
+<       STD_LSM(I,J,48)=STD_LSM(I,J,48)+lRCS(I,J)    *  dtfac 
+<       STD_LSM(I,J,49)=STD_LSM(I,J,49)+lRCT(I,J)    *  dtfac 
+<       STD_LSM(I,J,50)=STD_LSM(I,J,50)+lRCQ(I,J)    *  dtfac 
+<       STD_LSM(I,J,51)=STD_LSM(I,J,51)+lRCSOIL(I,J) *  dtfac 
+<       STD_LSM(I,J,52)=STD_LSM(I,J,52)+lSOILW(I,J)  *  dtfac 
+<       STD_LSM(I,J,53)=STD_LSM(I,J,53)+lSOILM(I,J)  *  dtfac 
+<       STD_LSM(I,J,54)=STD_LSM(I,J,54)+lQ1(I,J)     *  dtfac 
+<       STD_LSM(I,J,55)=STD_LSM(I,J,55)+lSMAV(I,J,1) *  dtfac 
+<       STD_LSM(I,J,56)=STD_LSM(I,J,56)+lSMAV(I,J,2) *  dtfac 
+<       STD_LSM(I,J,57)=STD_LSM(I,J,57)+lSMAV(I,J,3) *  dtfac 
+<       STD_LSM(I,J,58)=STD_LSM(I,J,58)+lSMAV(I,J,4) *  dtfac 
+<       STD_LSM(I,J,59)=STD_LSM(I,J,59)+lSMCWLT(I,J) *  dtfac 
+<       STD_LSM(I,J,60)=STD_LSM(I,J,60)+lSMCDRY(I,J) *  dtfac 
+<       STD_LSM(I,J,61)=STD_LSM(I,J,61)+lSMCREF(I,J) *  dtfac 
+<       STD_LSM(I,J,62)=STD_LSM(I,J,62)+lSMCMAX(I,J) *  dtfac 
+< !      STD_LSM(I,J,63)=STD_LSM(I,J,63)+lNROOT(I,J)
+< !      STD_LSM(I,J,64)=STD_LSM(I,J,64)+lLU(I,J)
+< !========
+< 
+<       ENDIF !easy
+<  1227 CONTINUE
+< 
+< #endif
+< #endif
+< 
+1095,1101c970,976
+<       STD_RAD(I,J,k,1)=STD_RAD(I,J,k,1)+FUSWO(I,J,k) *  dtfac
+<       STD_RAD(I,J,k,2)=STD_RAD(I,J,k,2)+FDSWO(I,J,k) *  dtfac
+<       STD_RAD(I,J,k,3)=STD_RAD(I,J,k,3)+FULWO(I,J,k) *  dtfac
+<       STD_RAD(I,J,k,4)=STD_RAD(I,J,k,4)+FDLWO(I,J,k) *  dtfac
+<       STD_RAD(I,J,k,5)=STD_RAD(I,J,k,5)+DTRADSW(I,J,k) *  dtfac
+<       STD_RAD(I,J,k,6)=STD_RAD(I,J,k,6)+DTRADLW(I,J,k) *  dtfac
+<       STD_RAD(I,J,k,7)=STD_RAD(I,J,k,7)+cldfrc(I,J,k) *  dtfac
+---
+>       STD_RAD(I,J,k,1)=STD_RAD(I,J,k,1)+FUSWO(I,J,k)
+>       STD_RAD(I,J,k,2)=STD_RAD(I,J,k,2)+FDSWO(I,J,k)
+>       STD_RAD(I,J,k,3)=STD_RAD(I,J,k,3)+FULWO(I,J,k)
+>       STD_RAD(I,J,k,4)=STD_RAD(I,J,k,4)+FDLWO(I,J,k)
+>       STD_RAD(I,J,k,5)=STD_RAD(I,J,k,5)+DTRADSW(I,J,k)
+>       STD_RAD(I,J,k,6)=STD_RAD(I,J,k,6)+DTRADLW(I,J,k)
+>       STD_RAD(I,J,k,7)=STD_RAD(I,J,k,7)+cldfrc(I,J,k)
+1105,1107c980,982
+<       STD_RAD(I,J,1,8)=STD_RAD(I,J,1,8)+FUSWTOA(I,J) *  dtfac
+<       STD_RAD(I,J,2,8)=STD_RAD(I,J,2,8)+FDSWTOA(I,J) *  dtfac
+<       STD_RAD(I,J,3,8)=STD_RAD(I,J,3,8)+FULWTOA(I,J) *  dtfac
+---
+>       STD_RAD(I,J,1,8)=STD_RAD(I,J,1,8)+FUSWTOA(I,J)
+>       STD_RAD(I,J,2,8)=STD_RAD(I,J,2,8)+FDSWTOA(I,J)
+>       STD_RAD(I,J,3,8)=STD_RAD(I,J,2,8)+FULWTOA(I,J)
+1130,1132c1005
+<    if( (mod(itt,nxsavg) .ne. 0 ) .OR. ( itt .eq. out_itt ) ) return
+< 
+<    out_itt = itt  ! Mars ADD to prevent over-estimate
+---
+>    if(mod(itt,nxsavg) .ne. 0) return
+1143c1016
+< !      FAC = 1. / FLOAT ( isample )   ! Mars comment to test sprec
+---
+>       FAC = 1. / FLOAT ( isample )
+1147,1159d1019
+< #if defined (LSM)
+<       std_lsm = std_lsm * fac
+< ! easy, mask out the water points
+<       DO J = 1,MJ1
+<       DO I = 1,MI1
+<       IF (LU(I,J) .EQ. 16) THEN
+<       DO IVAR = 1, IVAR10
+<       std_lsm(I,J,IVAR) = realval
+<       ENDDO
+<       ENDIF
+<       ENDDO
+<       ENDDO
+< #endif
+1347,1419d1206
+< !===hchun
+< #if defined (PARALLELIO)
+< #if defined (DIFFUSION)
+< #if defined (LSM)
+< 
+<         call pCDF_WRITE_xy(ncid_lsm, 'emissi', TIME_C, time_start, std_lsm(:,:,1) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'cmc', TIME_C, time_start, std_lsm(:,:,2) )
+<         call pCDF_WRITE_xy(ncid_lsm, 't1', TIME_C, time_start, std_lsm(:,:,3) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'ST1', TIME_C, time_start, std_lsm(:,:,4) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'ST2', TIME_C, time_start, std_lsm(:,:,5) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'ST3', TIME_C, time_start, std_lsm(:,:,6) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'ST4', TIME_C, time_start, std_lsm(:,:,7) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'SM1', TIME_C, time_start, std_lsm(:,:,8) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'SM2', TIME_C, time_start, std_lsm(:,:,9) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'SM3', TIME_C, time_start, std_lsm(:,:,10) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'SM4', TIME_C, time_start, std_lsm(:,:,11) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'SL1', TIME_C, time_start, std_lsm(:,:,12) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'SL2', TIME_C, time_start, std_lsm(:,:,13) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'SL3', TIME_C, time_start, std_lsm(:,:,14) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'SL4', TIME_C, time_start, std_lsm(:,:,15) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'snowh', TIME_C, time_start, std_lsm(:,:,16) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'sneqv', TIME_C, time_start, std_lsm(:,:,17) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'albedo', TIME_C, time_start, std_lsm(:,:,18) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'ch', TIME_C, time_start, std_lsm(:,:,19) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'cm', TIME_C, time_start, std_lsm(:,:,20) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'eta', TIME_C, time_start, std_lsm(:,:,21) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'fdown', TIME_C, time_start, std_lsm(:,:,22) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'ec', TIME_C, time_start, std_lsm(:,:,23) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'edir', TIME_C, time_start, std_lsm(:,:,24) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'et1', TIME_C, time_start, std_lsm(:,:,25) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'et2', TIME_C, time_start, std_lsm(:,:,26) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'et3', TIME_C, time_start, std_lsm(:,:,27) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'et4', TIME_C, time_start, std_lsm(:,:,28) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'ett', TIME_C, time_start, std_lsm(:,:,29) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'esnow', TIME_C, time_start, std_lsm(:,:,30) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'drip', TIME_C, time_start, std_lsm(:,:,31) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'dew', TIME_C, time_start, std_lsm(:,:,32) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'beta', TIME_C, time_start, std_lsm(:,:,33) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'etp', TIME_C, time_start, std_lsm(:,:,34) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'ssoil', TIME_C, time_start, std_lsm(:,:,35) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'flx1', TIME_C, time_start, std_lsm(:,:,36) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'flx2', TIME_C, time_start, std_lsm(:,:,37) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'flx3', TIME_C, time_start, std_lsm(:,:,38) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'snomlt', TIME_C, time_start, std_lsm(:,:,39) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'sncovr', TIME_C, time_start, std_lsm(:,:,40) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'runoff1', TIME_C, time_start, std_lsm(:,:,41) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'runoff2', TIME_C, time_start, std_lsm(:,:,42) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'runoff3', TIME_C, time_start, std_lsm(:,:,43) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'rc', TIME_C, time_start, std_lsm(:,:,44) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'pc', TIME_C, time_start, std_lsm(:,:,45) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'rsmin', TIME_C, time_start, std_lsm(:,:,46) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'xlai', TIME_C, time_start, std_lsm(:,:,47) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'rcs', TIME_C, time_start, std_lsm(:,:,48) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'rct', TIME_C, time_start, std_lsm(:,:,49) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'rcq', TIME_C, time_start, std_lsm(:,:,50) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'rcsoil', TIME_C, time_start, std_lsm(:,:,51) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'soilw', TIME_C, time_start, std_lsm(:,:,52) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'soilm', TIME_C, time_start, std_lsm(:,:,53) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'q1', TIME_C, time_start, std_lsm(:,:,54) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'smav1', TIME_C, time_start, std_lsm(:,:,55) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'smav2', TIME_C, time_start, std_lsm(:,:,56) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'smav3', TIME_C, time_start, std_lsm(:,:,57) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'smav4', TIME_C, time_start, std_lsm(:,:,58) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'smcwlt', TIME_C, time_start, std_lsm(:,:,59) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'smcdry', TIME_C, time_start, std_lsm(:,:,60) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'smcref', TIME_C, time_start, std_lsm(:,:,61) )
+<         call pCDF_WRITE_xy(ncid_lsm, 'smcmax', TIME_C, time_start, std_lsm(:,:,62) )
+< 
+< #endif
+< #endif
+< #endif
+< !========
+< 
+1497d1283
+< 
+1564,1566c1350
+< #if defined (LSM)     
+<       std_lsm = 0.0
+< #endif
+---
+>       
+Only in ./: LSM
+diff ./output_nc.F ../../../cloud/mog/CODE-gate/output_nc.F
+42,50d41
+< !===hchun
+< #if defined (DIFFUSION)
+< #if defined (LSM)
+<       integer (KIND=int_kind), public :: &
+<           ncid_lsm
+< #endif
+< #endif
+< !========
+< 
+753,955d743
+< 
+< !===hchun
+< #if defined (DIFFUSION)
+< #if defined (LSM)
+<       call fname_nc(itp2, EXPHDR, 'lsm', filnam_nc)
+< #if defined (PARALLELIO) 
+<       nc_err = nfmpi_create(mpi_comm_world,filnam_nc, or(nf_clobber,nf_64bit_offset),   &
+<                             mpi_info_null, ncid_lsm)
+<       CALL pCDF_INI_XY (ncid_lsm, time_len, &
+<                            mj_glob, mj_glob, mi_glob, mi_glob,  &
+<                       yz(1:mj_glob), yt(1:mj_glob), xz(1:mi_glob), xt(1:mi_glob))
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'emissi', 'emissivity', &
+<                           'emissivity', 'fractional', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'cmc', 'canopy moisture content', &
+<                           'canopy_moisture_content', 'kg m-2', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 't1', 'skin temperature', &
+<                           'skin_temperature', 'K', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'ST1', 'soil temperature layer 1', &
+<                           'soilt0_1lev', 'K', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'ST2', 'soil temperature layer 2', &
+<                           'soilt0_2lev', 'K', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'ST3', 'soil temperature layer 3', &
+<                           'soilt0_3lev', 'K', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'ST4', 'soil temperature layer 4', &
+<                           'soilt0_4lev', 'K', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'SM1', 'soil moisture layer 1', &
+<                           'soilm0_1lev', 'm3 m-3', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'SM2', 'soil moisture layer 2', &
+<                           'soilm0_2lev', 'm3 m-3', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'SM3', 'soil moisture layer 3', &
+<                           'soilt0_3lev', 'm3 m-3', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'SM4', 'soil moisture layer 4', &
+<                           'soilt0_4lev', 'm3 m-3', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'SL1', 'soil liquid layer 1', &
+<                           'soill0_1lev', 'm3 m-3', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'SL2', 'soil liquid layer 2', &
+<                           'soill0_2lev', 'm3 m-3', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'SL3', 'soil liquid layer 3', &
+<                           'soill0_3lev', 'm3 m-3', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'SL4', 'soil liquid layer 4', &
+<                           'soill0_4lev', 'm3 m-3', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'snowh', 'snow depth', &
+<                           'snow_depth', 'm', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'sneqv', 'water equivalent snow depth', &
+<                           'water_equivalent_snow_depth', 'm', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'albedo', 'surface albedo(including snow-cover effects)', &
+<                           'surface_albedo', 'fractional', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'ch', 'surface exchange coefficient for heat and moisture', &
+<                           'sfc_exchange_coef_heat', 'm-1', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'cm', 'surface exchange coefficient for momentum', &
+<                           'sfc_exchange_coef_momentum', 'm s-1', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'eta', 'latent heat flux(evapotranspiration)', &
+<                           'latent_heat_flux', 'W m-2', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'fdown', 'radiation forcing at the surface', &
+<                           'sfc_rad_forcing', 'W m-2', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'ec', 'canopy water evaporation', &
+<                           'canopy_water_evaporation', 'W m-2', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'edir', 'direct soil evaporation', &
+<                           'direct_soil_evaporation', 'W m-2', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'et1', 'plant transpiration layer 1', &
+<                           'plant_transpiration_1lev', 'W m-2', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'et2', 'plant transpiration layer 2', &
+<                           'plant_transpiration_2lev', 'W m-2', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'et3', 'plant transpiration layer 3', &
+<                           'plant_transpiration_3lev', 'W m-2', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'et4', 'plant transpiration layer 4', &
+<                           'plant_transpiration_4lev', 'W m-2', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'ett', 'total plant transpiration', &
+<                           'total_plant_transpiration', 'W m-2', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'esnow', 'sublimation from snowpack', &
+<                           'sublimation_from_snowpack', 'W m-2', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'drip', 'precipitation falling through canopy', &
+<                           'precipitation_fall_through_canopy', 'm', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'dew', 'dewfall', &
+<                           'dewfall', 'm', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'beta', 'ratio of actual to potential evapotranspiration', &
+<                           'ratio_of_actual_to_potential_evapotranspiration', 'fraction', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'etp', 'potentail evapotranspiration', &
+<                           'potential_evapotranspiration', 'W m-2', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'ssoil', 'soil heat flux', &
+<                           'soil_heat_flux', 'W m-2', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'flx1', 'latent heat flux from precipitation accumulating as snow', &
+<                           'latent_heat_flux_from_precipitation', 'W m-2', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'flx2', 'latent heat flux from freezing rain converting to ice', &
+<                           'latent_heat_flux_from_rain_to_ice', 'W m-2', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'flx3', 'latent heat flux from melting snow', &
+<                           'latent_heat_flux_from_snow', 'W m-2', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'snomlt', 'snow melt water', &
+<                           'snow_melt_water', 'm', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'sncovr', 'fractional snow cover', &
+<                           'fractional_snow_cover', 'fraction', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'runoff1', 'surface runoff', &
+<                           'sfc_runoff', 'm s-1', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'runoff2', 'subsurface runoff', &
+<                           'subsurface_runoff', 'm s-1', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'runoff3', 'internal soil layer runoff', &
+<                           'internal_soil_layer_runoff', 'm s-1', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'rc', 'canopy resistance', &
+<                           'canopy_resistance', 's m-1', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'pc', 'plant coefficient', &
+<                           'plant_coefficient', 'fraction', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'rsmin', 'minimum canopy resistance', &
+<                           'minimum_canopy_resistance', 's m-1', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'xlai', 'leaf area index', &
+<                           'leaf_area_index', 'dimensionless', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'rcs', 'incoming solar rc factor', &
+<                           'incoming_solar_rc_factor', 'dimensionless', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'rct', 'air temperature rc factor', &
+<                           'air_temperature_rc_factor', 'dimensionless', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'rcq', 'atmospheric water vapor deficit rc factor', &
+<                           'atmospheric_water_vapor_deficit_rc_factor', 'dimensionless', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'rcsoil', 'soil moisture rc factor', &
+<                           'soil_moisture_rc_factor', 'dimensionless', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'soilw', 'available soil moisture in the root zone', &
+<                           'available_soil_moisture_in_root_zone', 'fraction', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'soilm', 'total soil column moisture content', &
+<                           'total_soil_column_moisture_content', 'm', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'q1', 'effective mixing ratio at the surface', &
+<                           'sfc_effective_mixing_ratio', 'kg kg-1', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'smav1', 'soil moisture availability at level 1', &
+<                           'soil_moisture_availability_1lev', 'fraction', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'smav2', 'soil moisture availability at level 2', &
+<                           'soil_moisture_availability_2lev', 'fraction', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'smav3', 'soil moisture availability at level 3', &
+<                           'soil_moisture_availability_3lev', 'fraction', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'smav4', 'soil moisture availability at level 4', &
+<                           'soil_moisture_availability_4lev', 'fraction', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'smcwlt', 'wilting point', &
+<                           'wilting_point', 'm3 m-3', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'smcdry', 'dry soil moisture threshold where direct evaporation from the top layer ends', &
+<                           'dry_soil_moisture_threshold', 'm3 m-3', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'smcref', 'soil moisture threshold where transpiration begins to stress', &
+<                           'soil_moisture_threshold', 'm3 m-3', &
+<                           'yt','xt')
+<       CALL pCDF_INI_XY_VAR(ncid_lsm, 'smcmax', 'porosity', &
+<                           'porosity', 'm3 m-3', &
+<                           'yt','xt')
+< #endif 
+< #endif
+< 
+< #endif
+< 
+< !========
+4002,4014d3789
+< #if defined (DIFFUSION)
+< #if defined (LSM)
+< #if defined (PARALLELIO)
+< 
+<       nc_err = nfmpi_sync(ncid_lsm)
+< 
+< #endif
+< #endif
+< #endif
+< 
+< 
+< 
+< 
+5708c5483
+< 
+---
+>       
+diff ./petsc_vvm_solver.F ../../../cloud/mog/CODE-gate/petsc_vvm_solver.F
+2,8c2,8
+< #include "petsc/finclude/petscsysdef.h"
+< #include "petsc/finclude/petscvecdef.h"
+< #include "petsc/finclude/petscmatdef.h"
+< #include "petsc/finclude/petsckspdef.h"
+< #include "petsc/finclude/petscpcdef.h"
+< #include "petsc/finclude/petscdmdef.h"
+< #include "petsc/finclude/petscdmdadef.h"
+---
+> #include "finclude/petscsysdef.h"
+> #include "finclude/petscvecdef.h"
+> #include "finclude/petscmatdef.h"
+> #include "finclude/petsckspdef.h"
+> #include "finclude/petscpcdef.h"
+> #include "finclude/petscdmdef.h"
+> #include "finclude/petscdmdadef.h"
+121,122c121
+< PetscInt, PARAMETER, PRIVATE:: nlevel = 6, nlv = nlevel-1
+< PetscInt, PRIVATE:: i,j,k,kt,npt,np
+---
+> PetscInt, PRIVATE:: i,j,k,kt
+131c130
+< DM, PRIVATE::da3(nlevel),da2(nlevel)
+---
+> DM, PRIVATE::da3,da2
+134,149c133,135
+< Character(len=*), PARAMETER, PRIVATE :: ksp_type_conti = KSPFBCGS, pc_type_Conti = PCMG
+< Character(len=*), PARAMETER, PRIVATE :: ksp_type_toppsi = KSPFBCGS, pc_type_toppsi = PCMG
+< Character(len=*), PARAMETER, PRIVATE :: ksp_type_topchi = KSPFBCGS, pc_type_topchi = PCMG
+< !Character(len=*), PARAMETER, PRIVATE :: ksp_type_conti = KSPCG, pc_type_Conti = PCNONE
+< !Character(len=*), PARAMETER, PRIVATE :: ksp_type_toppsi = KSPCG, pc_type_toppsi = PCNONE
+< !Character(len=*), PARAMETER, PRIVATE :: ksp_type_topchi = KSPCG, pc_type_topchi = PCNONE
+< 
+< Character(len=*), PARAMETER, PRIVATE :: sksp_type_conti = KSPCG, spc_type_Conti = PCBJACOBI
+< Character(len=*), PARAMETER, PRIVATE :: sksp_type_toppsi = KSPCG, spc_type_toppsi = PCBJACOBI
+< Character(len=*), PARAMETER, PRIVATE :: sksp_type_topchi = KSPCG, spc_type_topchi = PCBJACOBI
+< 
+< !sub-ksp and respect pc for PCMG setting
+< PC, PRIVATE::spc_Conti(2*nlevel-1),spc_topChi(2*nlevel-1),spc_topPsi(2*nlevel-1)
+< KSP sksp_Conti(2*nlevel-1),sksp_topChi(2*nlevel-1),sksp_topPsi(2*nlevel-1)
+< 
+< Mat, PRIVATE:: R, Amat,Cmat
+---
+> Character(len=*), PARAMETER, PRIVATE :: ksp_type_conti = KSPCG, pc_type_Conti = PCEISENSTAT 
+> Character(len=*), PARAMETER, PRIVATE :: ksp_type_toppsi = KSPCG, pc_type_toppsi = PCEISENSTAT
+> Character(len=*), PARAMETER, PRIVATE :: ksp_type_topchi = KSPCG, pc_type_topchi = PCEISENSTAT
+151,152c137
+< ! Set tolerance  
+< PetscInt, PRIVATE:: MXIT = 2000
+---
+> PetscInt, PRIVATE:: MXIT = 1000
+154,155c139,142
+< PetscReal, PRIVATE:: tol_TopPsi = 1.d-15,atol_TopPsi=1.d-6,dtol_TopPsi = 1.d2
+< PetscReal, PRIVATE:: tol_TopChi = 1.d-15,atol_TopChi=1.d-6,dtol_TopChi = 1.d2
+---
+> PetscReal, PRIVATE:: tol_TopPsi = 1.d-4,atol_TopPsi=1.d-30,dtol_TopPsi = 1.d2
+> PetscReal, PRIVATE:: tol_TopChi = 1.d-15,atol_TopChi=1.d-4,dtol_TopChi = 1.d2
+> 
+> 
+178a166,167
+> 
+> 
+184,206c173,176
+<     call DMDACreate3d(PETSC_COMM_WORLD,DM_BOUNDARY_PERIODIC,                       &
+<       DM_BOUNDARY_PERIODIC,DM_BOUNDARY_NONE,DMDA_STENCIL_STAR,MI_glob/(2**nlv), &
+<       MJ_glob/(2**nlv),NK2-2,nsbdm_x,nsbdm_y,1,1,nhalo,PETSC_NULL_INTEGER,      &
+<       PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,da3(nlevel),ierr)
+< 
+<     call DMDASetUniformCoordinates(da3(nlevel),0.d0,1.d0,0.d0,1.d0,0.d0,1.d0,ierr)
+< 
+<     DO I = nlevel,2,-1
+<     call DMDAGetCorners(da3(I),ixx,iy,iz,mx,my,mz,ierr)
+<     call DMDASetRefinementFactor(da3(I),2,2,1,ierr)
+<     call DMRefine(da3(I), PETSC_COMM_WORLD, da3(I-1),ierr)
+<     call DMDASetUniformCoordinates(da3(I-1),0.d0,1.d0,0.d0,1.d0,0.d0,1.d0,ierr)
+<     ENDDO
+< 
+<     call DMDAGetCorners(da3(1),ixx,iy,iz,mx,my,mz,ierr)
+<     call DMDAGetGhostCorners(da3(1),ixg,iyg,izg,mxg,myg,mzg,ierr)
+< 
+<     npt=mi_glob*mj_glob*(NK2-2)
+<     np=nsbdm_x*nsbdm_y
+< 
+<     call MatCreateAIJ(MPI_COMM_WORLD,npt/np,npt/np,npt,npt,7, &
+<          PETSC_NULL_INTEGER,5,PETSC_NULL_INTEGER,Cmat,ierr)
+<     call OperatorConti(Cmat)
+---
+>     call DMDACreate3d(PETSC_COMM_WORLD,DM_BOUNDARY_PERIODIC,         &
+>       DM_BOUNDARY_PERIODIC,DM_BOUNDARY_NONE,DMDA_STENCIL_STAR,     &
+>       MI_glob,MJ_glob,NK2-2,nsbdm_x,nsbdm_y,1,1,nhalo,                 &
+>       PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,da3,ierr)
+207a178,181
+>     call DMDAGetCorners(da3,ixx,iy,iz,mx,my,mz,ierr)
+>     call DMDAGetGhostCorners(da3,ixg,iyg,izg,mxg,myg,mzg,ierr)
+>  
+> ! create Krylov Subspace solver create (Poisson equation) --  Conti
+222,224c196,197
+< !    call KSPSetDM(Conti,da3,ierr)
+< !    call KSPSetComputeOperators(Conti,ComputeConti,ctx3,ierr)    
+<     call KSPSetOperators(Conti,Cmat,Cmat,ierr)
+---
+>     call KSPSetDM(Conti,da3,ierr)
+>     call KSPSetComputeOperators(Conti,ComputeConti,ctx3,ierr)
+229,261d201
+<     IF (pc_type_conti .eq. PCMG) THEN
+<     call PCSetDM(PC_Conti,da3(1),ierr)
+<     call PCMGSetLevels(PC_Conti, nlevel,PETSC_NULL_OBJECT,ierr)
+<     call PCMGSetCycleType(PC_Conti, PC_MG_CYCLE_V,ierr)
+<     call PCMGSetType(PC_Conti,PC_MG_MULTIPLICATIVE,ierr)
+< !    call PCMGSetType(PC_Conti,PC_MG_FULL,ierr)
+< !    call PCMGSetType(pc,PC_MG_ADDITIVE,ierr)
+<     call PCMGSetGalerkin(PC_Conti,PETSC_TRUE,ierr)
+< 
+<     DO I = 1, nlevel -1
+<     call DMCreateInterpolation(da3(I+1),da3(I),R,PETSC_NULL_OBJECT,ierr)
+<     call PCMGSetInterpolation(PC_Conti,nlevel-I,R,ierr)
+<     call MATDestroy(R,ierr)
+<     ENDDO
+< 
+<     DO I = 1, nlevel -1
+<     call PCMGGetSmootherDown(PC_Conti,nlevel-I,sksp_Conti(I),ierr)
+<     call KSPSetType(sksp_Conti(I),sksp_type_conti,ierr)
+<     call KSPGetPC(sksp_Conti(I),spc_Conti(I),ierr)
+<     call PCSetType(spc_Conti(I),spc_type_conti,ierr)
+<     IF (spc_type_conti .eq. PCEISENSTAT) call PCEisenstatSetOmega(spc_Conti(I),Omega,ierr)
+< 
+<     call PCMGGetSmootherUp(PC_Conti,nlevel-I,sksp_Conti(2*nlevel-I),ierr)
+<     call KSPSetType(sksp_Conti(2*nlevel-I),sksp_type_conti,ierr)
+<     call KSPGetPC(sksp_Conti(2*nlevel-I),spc_Conti(2*nlevel-I),ierr)
+<     call PCSetType(spc_Conti(2*nlevel-I),spc_type_conti,ierr)
+<     IF (spc_type_conti .eq. PCEISENSTAT) call PCEisenstatSetOmega(spc_Conti(2*nlevel-I),Omega,ierr)
+<     ENDDO
+< 
+<     call PCMGGetCoarseSolve(PC_Conti,sksp_Conti(nlevel),ierr)
+<     call KSPSetType(sksp_Conti(nlevel),sksp_type_conti,ierr)
+<     call KSPGetPC(sksp_Conti(nlevel),spc_Conti(nlevel),ierr)
+<     call PCSetType(spc_Conti(nlevel),spc_type_conti,ierr)
+263,265d202
+<     ENDIF
+< 
+<     call KSPSetFromOptions(Conti,ierr)
+266a204
+> 
+270,271c208,209
+<     call DMCreateGlobalVector(da3(1),v,ierr)
+<     call DMCreateGlobalVector(da3(1),rhs,ierr)
+---
+>     call DMCreateGlobalVector(da3,v,ierr)
+>     call DMCreateGlobalVector(da3,rhs,ierr)
+273d210
+< 
+280,282d216
+<     call DMDACreate2d(PETSC_COMM_WORLD,DM_BOUNDARY_PERIODIC,                &
+<       DM_BOUNDARY_PERIODIC,DMDA_STENCIL_BOX,MI_glob/(2**nlv),MJ_glob/(2**nlv), &
+<       nsbdm_x,nsbdm_y,1,nhalo,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,da2(nlevel),ierr)
+284c218,220
+<     call DMDASetUniformCoordinates(da2(nlevel),0.d0,1.d0,0.d0,1.d0,0.d0,1.d0,ierr)
+---
+>     call DMDACreate2d(PETSC_COMM_WORLD,DM_BOUNDARY_PERIODIC,         &
+>       DM_BOUNDARY_PERIODIC,DMDA_STENCIL_STAR,MI_glob,MJ_glob,nsbdm_x,&
+>       nsbdm_y,1,nhalo,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,da2,ierr)
+286,289d221
+<     DO I = nlevel,2,-1
+<     call DMDASetRefinementFactor(da2(I),2,2,1,ierr)
+<     call DMRefine(da2(I), PETSC_COMM_WORLD, da2(I-1),ierr)
+<     call DMDASetUniformCoordinates(da2(I-1),0.d0,1.d0,0.d0,1.d0,0.d0,1.d0,ierr)
+291,298c223,225
+<     ENDDO
+< 
+< !    call DMDAGetCorners(da2(1),ixx,iy,iz,mx,my,mz,ierr)
+< !    call DMDAGetGhostCorners(da2(1),ixg,iyg,izg,mxg,myg,mzg,ierr)
+< 
+<     call DMCreateGlobalVector(da2(1),v1,ierr)
+<     call DMCreateGlobalVector(da2(1),v2,ierr)
+<     call DMCreateGlobalVector(da2(1),rhs,ierr)
+---
+>     call DMCreateGlobalVector(da2,v1,ierr)
+>     call DMCreateGlobalVector(da2,v2,ierr)
+>     call DMCreateGlobalVector(da2,rhs,ierr)
+301,311c228,229
+< !    call KSPSetDM(Toppsi,da2,ierr)
+< !    call KSPSetComputeOperators(Toppsi,ComputeTopbc,ctx2,ierr)
+< 
+<     npt=mi_glob*mj_glob
+<     np=nsbdm_x*nsbdm_y
+< 
+<     call MatCreateAIJ(MPI_COMM_WORLD,npt/np,npt/np,npt,npt,5, &
+<          PETSC_NULL_INTEGER,3,PETSC_NULL_INTEGER,Amat,ierr)
+<     call OperatorTopbc(Amat)
+<     call KSPSetOperators(Toppsi,Amat,Amat,ierr)
+< 
+---
+>     call KSPSetDM(Toppsi,da2,ierr)
+>     call KSPSetComputeOperators(Toppsi,ComputeTopbc,ctx2,ierr)
+315,349d232
+<     IF (pc_type_toppsi .eq. PCMG) THEN
+< 
+<     call PCSetDM(PC_Toppsi,da2(1),ierr)
+<     call PCMGSetLevels(PC_Toppsi, nlevel,PETSC_NULL_OBJECT,ierr)
+<     call PCMGSetCycleType(PC_Toppsi, PC_MG_CYCLE_V,ierr)
+<     call PCMGSetType(PC_Toppsi,PC_MG_MULTIPLICATIVE,ierr)
+< !    call PCMGSetType(pc,PC_MG_ADDITIVE,ierr)
+<     call PCMGSetGalerkin(PC_Toppsi,PETSC_TRUE,ierr)
+< 
+<     DO I = 1, nlevel -1
+<     call DMCreateInterpolation(da2(I+1),da2(I),R,PETSC_NULL_OBJECT,ierr)
+<     call PCMGSetInterpolation(PC_Toppsi,nlevel-I,R,ierr)
+<     call MATDestroy(R,ierr)
+<     ENDDO
+< 
+<     DO I = 1, nlevel -1
+<     call PCMGGetSmootherDown(PC_toppsi,nlevel-I,sksp_toppsi(I),ierr)
+<     call KSPSetType(sksp_toppsi(I),sksp_type_toppsi,ierr)
+<     call KSPGetPC(sksp_toppsi(I),spc_toppsi(I),ierr)
+<     call PCSetType(spc_toppsi(I),spc_type_toppsi,ierr)
+<     IF (spc_type_toppsi .eq. PCEISENSTAT) call PCEisenstatSetOmega(spc_toppsi(I),Omega,ierr)
+< 
+<     call PCMGGetSmootherUp(PC_toppsi,nlevel-I,sksp_toppsi(2*nlevel-I),ierr)
+<     call KSPSetType(sksp_toppsi(2*nlevel-I),sksp_type_toppsi,ierr)
+<     call KSPGetPC(sksp_toppsi(2*nlevel-I),spc_toppsi(2*nlevel-I),ierr)
+<     call PCSetType(spc_toppsi(2*nlevel-I),spc_type_toppsi,ierr)
+<     IF (spc_type_toppsi .eq. PCEISENSTAT) call PCEisenstatSetOmega(spc_toppsi(2*nlevel-I),Omega,ierr)
+<     ENDDO
+< 
+<     call PCMGGetCoarseSolve(PC_toppsi,sksp_toppsi(nlevel),ierr)
+<     call KSPSetType(sksp_toppsi(nlevel),sksp_type_toppsi,ierr)
+<     call KSPGetPC(sksp_toppsi(nlevel),spc_toppsi(nlevel),ierr)
+<     call PCSetType(spc_toppsi(nlevel),spc_type_toppsi,ierr)
+< 
+<     ENDIF
+353d235
+<     call KSPSetFromOptions(Toppsi,ierr)
+359,362c241,242
+< !    call KSPSetDM(Topchi,da2,ierr)
+< !    call KSPSetComputeOperators(Topchi,ComputeTopbc,ctx2,ierr)
+< 
+<     call KSPSetOperators(Topchi,Amat,Amat,ierr)
+---
+>     call KSPSetDM(Topchi,da2,ierr)
+>     call KSPSetComputeOperators(Topchi,ComputeTopbc,ctx2,ierr)
+366,400d245
+<     IF (pc_type_topchi .eq. PCMG) THEN
+< 
+<     call PCSetDM(PC_Topchi,da2(1),ierr)
+<     call PCMGSetLevels(PC_Topchi, nlevel,PETSC_NULL_OBJECT,ierr)
+<     call PCMGSetCycleType(PC_Topchi, PC_MG_CYCLE_V,ierr)
+<     call PCMGSetType(PC_Topchi,PC_MG_MULTIPLICATIVE,ierr)
+< !    call PCMGSetType(pc,PC_MG_ADDITIVE,ierr)
+<     call PCMGSetGalerkin(PC_Topchi,PETSC_TRUE,ierr)
+< 
+<     DO I = 1, nlevel -1
+<     call DMCreateInterpolation(da2(I+1),da2(I),R,PETSC_NULL_OBJECT,ierr)
+<     call PCMGSetInterpolation(PC_Topchi,nlevel-I,R,ierr)
+<     call MATDestroy(R,ierr)
+<     ENDDO
+< 
+<     DO I = 1, nlevel -1
+<     call PCMGGetSmootherDown(PC_topchi,nlevel-I,sksp_topchi(I),ierr)
+<     call KSPSetType(sksp_topchi(I),sksp_type_topchi,ierr)
+<     call KSPGetPC(sksp_topchi(I),spc_topchi(I),ierr)
+<     call PCSetType(spc_topchi(I),spc_type_topchi,ierr)
+<     IF (spc_type_topchi .eq. PCEISENSTAT) call PCEisenstatSetOmega(spc_topchi(I),Omega,ierr)
+< 
+<     call PCMGGetSmootherUp(PC_topchi,nlevel-I,sksp_topchi(2*nlevel-I),ierr)
+<     call KSPSetType(sksp_topchi(2*nlevel-I),sksp_type_topchi,ierr)
+<     call KSPGetPC(sksp_topchi(2*nlevel-I),spc_topchi(2*nlevel-I),ierr)
+<     call PCSetType(spc_topchi(2*nlevel-I),spc_type_topchi,ierr)
+<     IF (spc_type_topchi .eq. PCEISENSTAT) call PCEisenstatSetOmega(spc_topchi(2*nlevel-I),Omega,ierr)
+<     ENDDO
+< 
+<     call PCMGGetCoarseSolve(PC_topchi,sksp_topchi(nlevel),ierr)
+<     call KSPSetType(sksp_topchi(nlevel),sksp_type_topchi,ierr)
+<     call KSPGetPC(sksp_topchi(nlevel),spc_topchi(nlevel),ierr)
+<     call PCSetType(spc_topchi(nlevel),spc_type_topchi,ierr)
+< 
+<     ENDIF
+405d249
+<     call KSPSetFromOptions(Topchi,ierr)
+408a253
+>  
+414,418d258
+< !    DO I=1,2*nlevel-1
+< !    call KSPDestroy(sksp_Conti(I),ierr)
+< !    call KSPDestroy(sksp_toppsi(I),ierr)
+< !    call KSPDestroy(sksp_topchi(I),ierr)
+< !    enddo
+419a260
+>     call DMDestroy(da3,ierr)
+422,425c263
+<     DO I=1,nlevel
+<     call DMDestroy(da3(i),ierr)
+<     call DMDestroy(da2(i),ierr)
+<     enddo
+---
+>     call DMDestroy(da2,ierr)
+432,433c270,271
+<     call DMCreateGlobalVector(da3(1),rhs,ierr)
+<     call DMCreateLocalVector(da3(1),vl,ierr)
+---
+>     call DMCreateGlobalVector(da3,rhs,ierr)
+>     call DMCreateLocalVector(da3,vl,ierr)
+446,447c284,285
+<       call DMLocalToGlobalBegin(da3(1),vl,INSERT_VALUES,rhs,ierr)
+<       call DMLocalToGlobalEnd(da3(1),vl,INSERT_VALUES,rhs,ierr)
+---
+>       call DMLocalToGlobalBegin(da3,vl,INSERT_VALUES,rhs,ierr)
+>       call DMLocalToGlobalEnd(da3,vl,INSERT_VALUES,rhs,ierr)
+449d286
+<       call KSPSetFromOptions(Conti,ierr)
+459,460c296,297
+<       call DMGlobalToLocalBegin(da3(1),v,INSERT_VALUES,vl,ierr)
+<       call DMGlobalToLocalEnd(da3(1),v,INSERT_VALUES,vl,ierr)
+---
+>       call DMGlobalToLocalBegin(da3,v,INSERT_VALUES,vl,ierr)
+>       call DMGlobalToLocalEnd(da3,v,INSERT_VALUES,vl,ierr)
+482,483c319,320
+<     call DMCreateGlobalVector(da2(1),rhs,ierr)
+<     call DMCreateLocalVector(da2(1),vl,ierr)
+---
+>     call DMCreateGlobalVector(da2,rhs,ierr)
+>     call DMCreateLocalVector(da2,vl,ierr)
+494,495c331,332
+<       call DMLocalToGlobalBegin(da2(1),vl,INSERT_VALUES,rhs,ierr)
+<       call DMLocalToGlobalEnd(da2(1),vl,INSERT_VALUES,rhs,ierr)
+---
+>       call DMLocalToGlobalBegin(da2,vl,INSERT_VALUES,rhs,ierr)
+>       call DMLocalToGlobalEnd(da2,vl,INSERT_VALUES,rhs,ierr)
+500d336
+<       call KSPSetFromOptions(Toppsi,ierr)
+511c347
+< !      call vecshift(v1,vsum*tpts, ierr)
+---
+>       call vecshift(v1,vsum*tpts, ierr)
+513,514c349,350
+<       call DMGlobalToLocalBegin(da2(1),v1,INSERT_VALUES,vl,ierr)
+<       call DMGlobalToLocalEnd(da2(1),v1,INSERT_VALUES,vl,ierr)
+---
+>       call DMGlobalToLocalBegin(da2,v1,INSERT_VALUES,vl,ierr)
+>       call DMGlobalToLocalEnd(da2,v1,INSERT_VALUES,vl,ierr)
+534,535c370,371
+<     call DMCreateGlobalVector(da2(1),rhs,ierr)
+<     call DMCreateLocalVector(da2(1),vl,ierr)
+---
+>     call DMCreateGlobalVector(da2,rhs,ierr)
+>     call DMCreateLocalVector(da2,vl,ierr)
+541c377
+<       tmp(ip+kt)= -X(I-ixx+2,J-iy+2)
+---
+>       tmp(ip+kt)=-X(I-ixx+2,J-iy+2)
+546,547c382,383
+<       call DMLocalToGlobalBegin(da2(1),vl,INSERT_VALUES,rhs,ierr)
+<       call DMLocalToGlobalEnd(da2(1),vl,INSERT_VALUES,rhs,ierr)
+---
+>       call DMLocalToGlobalBegin(da2,vl,INSERT_VALUES,rhs,ierr)
+>       call DMLocalToGlobalEnd(da2,vl,INSERT_VALUES,rhs,ierr)
+552,553d387
+<       call KSPSetFromOptions(Topchi,ierr)
+< 
+564c398
+< !      call vecshift(v2,vsum*tpts,ierr)
+---
+>       call vecshift(v2,vsum*tpts,ierr)
+566,567c400,401
+<       call DMGlobalToLocalBegin(da2(1),v2,INSERT_VALUES,vl,ierr)
+<       call DMGlobalToLocalEnd(da2(1),v2,INSERT_VALUES,vl,ierr)
+---
+>       call DMGlobalToLocalBegin(da2,v2,INSERT_VALUES,vl,ierr)
+>       call DMGlobalToLocalEnd(da2,v2,INSERT_VALUES,vl,ierr)
+582,760d415
+< SUBROUTINE OperatorConti(jac)
+< 
+<       Mat         jac
+<       PetscInt     ltog(1)
+<       PetscOffset idltog,idx
+<       PetscInt grow(1)
+<       PetscInt row,i1,i7,i6,irow,jrow,krow
+<       PetscInt col(7),iseven
+<       PetscScalar two,one,lambda,c1,c2,ctmp,tem,dzsq
+<       PetscScalar vv(7),AN(NK2-2),BN(NK2-2),CN(NK2-2),B_loc(NK2),BU(NK2)
+<       ISLocalToGlobalMapping ltogm
+< 
+<       one    = 1.
+<       two    = 2.
+< 
+<       i1 = 1
+<       i7 = 7
+<       i6 = 6
+<       c1 = -1.d0/(DX*DX)
+<       c2 = -1.d0/(DYNEW*DYNEW)
+<       ctmp = -2.d0*(c1+c2)
+< 
+<       do K = 1, Nk2-2
+<       B_loc(K) = 1. / ( RHOZ(K+1) * FNZ(K+1) )
+<       BU(K) = FNU(K+1) / RHOU(K+1)
+<       enddo
+<       BU(Nk2-1) = FNU(Nk2) / RHOU(Nk2)
+< 
+<       DZSQ = DZ*DZ
+<       do K = 1, Nk2-2
+<       TEM = 1. / ( B_loc(K) * DZSQ )
+<       AN(K) = - BU(K) * TEM
+<       CN(K) = - BU(K+1) * TEM
+<       BN(K) = -( AN(K) + CN(K) )
+<       enddo
+<       AN(1) = 0.
+<       CN(Nk2-2) = 0.
+< 
+< 
+<       call DMGetLocalToGlobalMapping(da3(1),ltogm,ierr)
+<       call ISLocalToGlobalMappingGetIndices(ltogm,ltog,idltog,ierr)
+< 
+< 
+<       k=iz
+<         row = (k - izg)*mxg*myg !+ (ys-gys)*gxm !+  xs - gxs
+<         do  j=iy,iy+my-1
+<           irow = row + (j - iyg)*mxg + ixx - ixg
+<           do i=ixx,ixx+mx-1
+<             krow = irow + (i - ixg)
+<             grow(1) = ltog(idltog+krow)
+< !          print*,i,j,k,krow,ltog(idltog+krow)
+<             vv(1)   = c2
+<             col(1) = ltog(idltog+krow - mxg)
+<             vv(2)   = c1
+<             col(2) = ltog(idltog+krow - 1)
+<             vv(3)   = ctmp + bn(k+1)
+<             col(3) = grow(1)
+<             vv(4)   = c1
+<             col(4) = ltog(idltog+krow + 1)
+<             vv(5)   = c2
+<             col(5) = ltog(idltog+krow + mxg)
+<             vv(6)   = cn(k+1)
+<             col(6) = ltog(idltog+krow + mxg*myg)
+<       call MatSetValues(jac,i1,grow,i6,col,vv,INSERT_VALUES,ierr)
+<           enddo
+<         enddo
+< 
+<       do k=iz+1,iz+mz-2
+<         row = (k - izg)*mxg*myg !+ (ys-gys)*gxm !+  xs - gxs
+<         do  j=iy,iy+my-1
+<           irow = row + (j - iyg)*mxg + ixx - ixg
+<           do i=ixx,ixx+mx-1
+<             krow = irow + (i - ixg)
+<             grow(1) = ltog(idltog+krow)
+< !          print*,i,j,k,krow,ltog(idltog+krow)
+<             vv(1)   = an(k+1)
+<             col(1) = ltog(idltog+krow - mxg*myg)
+<             vv(2)   = c2
+<             col(2) = ltog(idltog+krow - mxg)
+<             vv(3)   = c1
+<             col(3) = ltog(idltog+krow - 1)
+<             vv(4)   = ctmp + bn(k+1)
+<             col(4) = grow(1)
+<             vv(5)   = c1
+<             col(5) = ltog(idltog+krow + 1)
+<             vv(6)   = c2
+<             col(6) = ltog(idltog+krow + mxg)
+<             vv(7)   = cn(k+1)
+<             col(7) = ltog(idltog+krow + mxg*myg)
+<       call MatSetValues(jac,i1,grow,i7,col,vv,INSERT_VALUES,ierr)
+<           enddo
+<         enddo
+<       enddo
+< 
+<       k=mz-1
+<         row = (k - izg)*mxg*myg !+ (ys-gys)*gxm !+  xs - gxs
+<         do  j=iy,iy+my-1
+<           irow = row + (j - iyg)*mxg + ixx - ixg
+<           do i=ixx,ixx+mx-1
+<             krow = irow + (i - ixg)
+<             grow(1) = ltog(idltog+krow)
+< !          print*,i,j,k,krow,ltog(idltog+krow)
+<             vv(1)   = an(k+1)
+<             col(1) = ltog(idltog+krow - mxg*myg)
+<             vv(2)   = c2
+<             col(2) = ltog(idltog+krow - mxg)
+<             vv(3)   = c1
+<             col(3) = ltog(idltog+krow - 1)
+<             vv(4)   = ctmp + bn(k+1)
+<             col(4) = grow(1)
+<             vv(5)   = c1
+<             col(5) = ltog(idltog+krow + 1)
+<             vv(6)   = c2
+<             col(6) = ltog(idltog+krow + mxg)
+<       call MatSetValues(jac,i1,grow,i6,col,vv,INSERT_VALUES,ierr)
+<           enddo
+<         enddo
+< 
+<       call ISLocalToGlobalMappingRestoreIndices(ltogm,ltog,idltog,ierr)
+< 
+<       call MatAssemblyBegin(jac,MAT_FINAL_ASSEMBLY,ierr)
+<       call MatAssemblyEnd(jac,MAT_FINAL_ASSEMBLY,ierr)
+<       return
+< 
+< 
+< END SUBROUTINE OperatorConti
+< SUBROUTINE OperatorTopbc(jac)
+< 
+<       Mat         jac
+<       PetscInt     ltog(1)
+<       PetscOffset idltog,idx
+<       PetscInt grow(1)
+<       PetscInt row,ione,irow,jrow,krow
+<       PetscInt col(5),ifive
+<       PetscScalar two,one,lambda
+<       PetscScalar vv(5)
+<       PetscScalar  ctmp,c1,c2
+<       ISLocalToGlobalMapping ltogm
+< 
+<       ione   = 1
+<       ifive = 5
+<       one    = 1.
+< 
+<       c1     = -1./dble(DX*DX)
+<       c2     = -1./dble(DYNEW*DYNEW)
+<       ctmp   = -2.*(c1+c2)
+< 
+<       call DMGetLocalToGlobalMapping(da2(1),ltogm,ierr)
+<       call ISLocalToGlobalMappingGetIndices(ltogm,ltog,idltog,ierr)
+< 
+<         do 20 j=iy,iy+my-1
+<           irow = (j - iyg)*mxg + ixx - ixg
+< !          do 30 i=xs,xs+xm-1
+<           do 30 i=ixx,ixx+mx-1
+<             krow = irow + (i - ixg)
+<             grow(1) = ltog(idltog+krow)
+< !          print*,i,j,krow,ltog(idltog+krow)
+<             vv(1)   = c2
+<             col(1) = ltog(idltog+krow - mxg)
+<             vv(2)   = c1
+<             col(2) = ltog(idltog+krow - 1)
+<             vv(3)   = ctmp
+<             col(3) = grow(1)
+<             vv(4)   = c1
+<             col(4) = ltog(idltog+krow + 1)
+<             vv(5)   = c2
+<             col(5) = ltog(idltog+krow + mxg)
+<       call MatSetValues(jac,ione,grow,ifive,col,vv,INSERT_VALUES,ierr)
+<  30   continue
+< !      endif
+<  20   continue
+<       call ISLocalToGlobalMappingRestoreIndices(ltogm,ltog,idltog,ierr)
+< 
+<       call MatAssemblyBegin(jac,MAT_FINAL_ASSEMBLY,ierr)
+<       call MatAssemblyEnd(jac,MAT_FINAL_ASSEMBLY,ierr)
+<       return
+< 
+< END SUBROUTINE
+< 
+775c430
+<       PetscScalar AN(NK2-1),BN(NK2-1),CN(NK2-1),B_loc(NK2),BU(NK2)
+---
+>       PetscScalar AN(NK2-2),BN(NK2-2),CN(NK2-2),B_loc(NK2),BU(NK2)
+791,794c446,450
+<       
+<       do K = 1, Nk2-1
+<       B_loc(K) = 1. / ( RHOZ(K) * FNZ(K) )
+<       BU(K) = FNU(K) / RHOU(K)
+---
+> 
+> 
+>       do K = 1, Nk2-2
+>       B_loc(K) = 1. / ( RHOZ(K+1) * FNZ(K+1) )
+>       BU(K) = FNU(K+1) / RHOU(K+1)
+796c452
+<       BU(Nk2) = FNU(Nk2) / RHOU(Nk2)
+---
+>       BU(Nk2-1) = FNU(Nk2) / RHOU(Nk2)
+799c455
+<       do K = 1, Nk2-1
+---
+>       do K = 1, Nk2-2
+806c462,463
+<       CN(Nk2-1) = 0.
+---
+>       CN(Nk2-2) = 0.
+> 
+939d595
+< 
+941d596
+<      
+diff ./physics_interface.f90 ../../../cloud/mog/CODE-gate/physics_interface.f90
+27a28
+>       
+30c31
+<       USE rrtm_vars, only: sstxy,albdo
+---
+>       USE rrtm_vars, only: sstxy
+83c84
+<           i,j,k,L      ! add by mars for not calling too much rad
+---
+>           i,j,k,L
+170d170
+< #if !defined (LSM)
+172c172
+< #endif
+---
+> 
+235,236c235,237
+<       CALL RADIATION_RRTMG(ITT, NRADD, SSTxy, PBAR, PIBAR, DX, &
+<                            DYNEW, RLAT, RLON, DT, ZZ, ZT, RHO)
+---
+>       CALL RADIATION_RRTMG(ITT, NRADD, SSTxy, PBAR, PIBAR, DX, DYNEW, &
+>                             RLAT, RLON, DT, ZZ, ZT, RHO)
+> 
+323c324
+<         SPREC(I,J) =  VTR_int(I,hxp)+VTS_int(I,hxp)+VTG_int(I,hxp)
+---
+>         SPREC(I,J) =VTR_int(I,hxp)+VTS_int(I,hxp)+VTG_int(I,hxp)
+diff ./physics_v10d.f90 ../../../cloud/mog/CODE-gate/physics_v10d.f90
+1603c1603
+<       !IF(VTG > 0.00)  write(*,*) 'I : ', VCONG , QGR , DSQRT(RHO)
+---
+> 
+diff ./q_chk_module.F ../../../cloud/mog/CODE-gate/q_chk_module.F
+706,707d705
+<       if (sum(1) .lt. 1.e-16 .or. tmp .lt. 0.98) tmp = 1.
+<                         
+diff ./radiation_rrtmg.f90 ../../../cloud/mog/CODE-gate/radiation_rrtmg.f90
+2,3c2,3
+< SUBROUTINE RADIATION_RRTMG(ITT, NRADD, tg, PBAR, PIBAR, DX, &
+<                             DYNEW, RLAT, RLON, DT, ZZ, ZT, RHO)
+---
+> SUBROUTINE RADIATION_RRTMG(ITT, NRADD, tg, PBAR, PIBAR, DX, DYNEW, &
+>                             RLAT, RLON, DT, ZZ, ZT, RHO)
+41a42
+> 
+76,77c77,78
+<           KRAD,    &
+<           CU_ITT = -1 ! Mars add to prevent too much rad
+---
+>           KRAD
+> 
+260c261
+<       IF ((itt .EQ. 1) .OR. ( (mod(itt,nrad)==1) .AND. (CU_ITT .NE. ITT) )) THEN
+---
+>       IF ((itt .EQ. 1) .OR. mod(itt,nrad)==1 ) THEN
+262d262
+<         CU_ITT = ITT 
+diff ./rcalc_module.F ../../../cloud/mog/CODE-gate/rcalc_module.F
+47a48
+> 
+49a51
+> 
+187a190
+> 
+Common subdirectories: ./RRTMG and ../../../cloud/mog/CODE-gate/RRTMG
+diff ./time_manager_module.F ../../../cloud/mog/CODE-gate/time_manager_module.F
+99c99
+<       rjday = rjday0 + ( (ITT-1) * PASS_BIG_DT + PASS_SMALL_DT )  / SECDAY
+---
+>       rjday = rjday0 + (ITT-1) * DT / SECDAY
+diff ./turb_3d_module.F ../../../cloud/mog/CODE-gate/turb_3d_module.F
+13,16d12
+< #if defined (LSM)
+< USE land_module, only:land_interface,land_ini
+< USE rad, only:lwDown_3D,swDown_3D
+< #endif
+92c88
+<       DELD=(DX*DYNEW*DZ)**POWE
+---
+>       DELD=(DX*DYNEW*DZ/FNZ(1))**POWE
+297a294
+> 
+332d328
+< 
+334,335d329
+< !      print*,"before call sflux_3d"
+< !      print*,"ITT = ",ITT
+386a381
+> 
+396a392
+> 
+423a420
+> 
+435a433
+> 
+817,830c815
+<          WT(MI1,MJ1),            & ! surface heat flux out from LSM/SFLUX_2D
+<          WQ(MI1,MJ1),            & ! surface water flux out from LSM/SFLUX_2D
+<          SPEEDTP(MI1,MJ1),       & ! surface spd flux input for LSM/SFLUX_2
+<          QG(MI1,MJ1),            & ! surface qv flux input for LSM/SFLUX_2
+<          T2(MI1,MJ1),            & ! second lv tmperature for LSM
+<          TD(MI1,MJ1),            &
+<          QD(MI1,MJ1),            &
+<          THVSMD(MI1,MJ1),        &
+<          VEN2D(mim:mip,mjm:mjp)    ! surface spd factor output fof LSM
+< 
+<       REAL (KIND=int_kind) ::    &
+<          swD(MI1,MJ1),           & ! surface short wave flux input for LSM
+<          lwD(MI1,MJ1)             ! surface long wave flux input fof LSM
+< 
+---
+>          WT(MI1,MJ1),WQ(MI1,MJ1),SPEEDTP(MI1,MJ1),VEN2D(mim:mip,mjm:mjp) 
+840,841c825
+<          zrough1, & !
+<          ztmp
+---
+>          zrough1    !
+846,849c830
+<          hxp, hx1, hxup, hxvp, hxu1, hxv1, topo, tempim       ! do loop indices for zonal, meridional and vertical dimensions
+< 
+<       CP = 1004.5
+<       pi = 4._8 * atan(1._8)
+---
+>          hxp, hx1, hxup, hxvp, hxu1, hxv1, topo       ! do loop indices for zonal, meridional and vertical dimensions
+853d833
+<       tempim=dble(mim_glob(my_task+1)+i-1)
+859,861c839,841
+< !      if(hx1 .ge. 2) then
+< !      tg(i,j)=thbar(hx1)*pibar(hx1)   !specify the ground temp. at the corresponding level
+< !      gwet(i,j)=0.8
+---
+>       if(hx1 .ge. 2) then
+>       tg(i,j)=thbar(hx1)*pibar(hx1)   !specify the ground temp. at the corresponding level
+>       gwet(i,j)=0.8
+863d842
+< !ccwu for sst gradient test
+866,899d844
+< #if defined (LSM)
+<       DO 105 J = 1,MJ1
+<       DO 105 I = 1,MI1
+< 
+<       hxp=INT(hx(I,J))+1
+<       hx1=INT(hx(I,J))
+<       ztmp = .5*DZ/FNT(hxp)
+< 
+<       T2(I,J) = TH3D(I,J,hxp)*PIBAR(hxp)
+<       QG(I,J) = QV3D(I,J,hxp)/(1+QV3D(I,J,hxp))
+<       swD(I,J) = swDown_3D(I,J,hxp)
+<       lwD(I,J) = lwDown_3D(I,J,hxp)
+< 
+<       ES1  = ES ( TG(I,J) )
+<       QSFC = ES1 * 0.622 / ( PBAR(hx1) - ES1 )
+<       TS   = CP * TG(I,J) + GRAV * ZW(hx1)
+< 
+< !     SURFACE VALUES OF LIQUID WATER STATIC ENERGY AND TOTAL WATER
+<       Q    = QV3D(I,J,hxp)+QC3D(I,J,hxp)+QI3D(I,J,hxp)
+<       T    = CP*TH3D(I,J,hxp)*PIBAR(hxp)-HLF*QC3D(I,J,hxp)+GRAV*ZT(hxp)    &
+<              -(HLF+HLM)*QI3D(I,J,hxp)
+< 
+<       TD(I,J) = TS-T 
+<       QD(I,J) = ABS(GWET(I,J))*(QSFC-Q)
+<       THVSMD(I,J) = TG(I,J)/pibar(hx1)-TH3D(I,J,hxp)                         &
+<                +ABS(GWET(I,J))*THBAR(hxp)*(DELTA*(QSFC-QV3D(I,J,hxp)))
+<   105 CONTINUE
+< 
+<       call land_interface(T2,QG,swD,lwD,sprec(1:mi1,1:mj1),WT,WQ, &
+<                           VEN2D,SPEEDTP,ZROUGH,TG,TD,QD,THVSMD)
+< 
+< #else
+< !==========================================================
+< 
+904d848
+<       ztmp = .5*DZ/FNT(hxp)
+912c856
+<       T    = CP*TH3D(I,J,hxp)*PIBAR(hxp)-HLF*QC3D(I,J,hxp)+GRAV*ZT(hxp)  &
+---
+>       T    = CP*TH3D(I,J,hxp)*PIBAR(hxp)-HLF*QC3D(I,J,hxp)+GRAV*ZT(hxp)   &
+920,921d863
+<       CALL SFLUX_2D (0._dbl_kind,THBAR(hxp),THVSM,SPEEDM,ztmp,ZROUGH1,   &
+<                      USTAR,VENTFC,MOLEN)
+922a865,866
+>       CALL SFLUX_2D (0._dbl_kind,THBAR(hxp),THVSM,SPEEDM,ZT(hxp),ZROUGH1,   &
+>                      USTAR,VENTFC,MOLEN)
+933d876
+< !PRINT*,TS,T,WQ(I,J),VEN2D(I,J)
+937c880
+< #endif
+---
+> 
+1320,1323d1262
+< 
+< 
+< #if defined (LSM)
+<       call land_ini(hx)
+1325,1326d1263
+< #endif
+< 
+Only in ./: vertical_adaptive.F
+diff ./wind_module.F ../../../cloud/mog/CODE-gate/wind_module.F
+248c248
+<       DO 500 K=1,maxtopo+1
+---
+>       DO 500 K=1,NK3
+263c263
+<       DO 550 K=1,maxtopo+1
+---
+>       DO 550 K=1,NK2
+Only in ../../../cloud/mog/CODE-gate/: z_coord.F-new
+Only in ../../../cloud/mog/CODE-gate/: z_coord.F-origin

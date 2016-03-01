@@ -15,7 +15,6 @@ date > runtime
 
 #/opt/openmpi/bin/mpirun -np total_cores ./vvm -ksp_monitor_short -mg_levels_ksp_monitor_short < INPUT | tee OUTPUT
 
-
 date >> runtime
 
 
