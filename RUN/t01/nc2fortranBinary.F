@@ -31,7 +31,7 @@
       integer i,j,k,ierr
 
       integer NLID(2)
-      integer idx,idy
+      integer idx,idy,nvaridx,nvaridy
 
       REAL*8 DT,DX,DYNEW,DZ,DZ1,ALADV,ZB,TOP,TMP,WRXMU,UVTAU
       LOGICAL NOTURB,NOSFX,BUOY
@@ -170,64 +170,64 @@ C      TMP = MAX(TMP,DATA(IP,JP))
   100 CONTINUE
 
       ELSE
-
-      OPEN(unit=15,file='RUNDATA/LSM/lon.txt',form='formatted')
-      READ(15,*) xt
-      CLOSE(15)
-      OPEN(unit=15,file='RUNDATA/LSM/lat.txt',form='formatted')
-      READ(15,*) yt
-      CLOSE(15)
-
-      OPEN(unit=15,file='RUNDATA/LSM/albedo.txt',form='formatted')
-      READ(15,*) alb
-      CLOSE(15)
-    
-      OPEN(unit=15,file='RUNDATA/LSM/grf.txt',form='formatted')
-      READ(15,*) grf
-      CLOSE(15)
-
-      OPEN(unit=15,file='RUNDATA/LSM/hgt.txt',form='formatted')
-      READ(15,*) hgt
-      CLOSE(15)
-
-      OPEN(unit=15,file='RUNDATA/LSM/lai.txt',form='formatted')
-      READ(15,*) lai
-      CLOSE(15)
-
-      OPEN(unit=15,file='RUNDATA/LSM/lu.txt',form='formatted')
-      READ(15,*) lu
-      CLOSE(15)
-
-      OPEN(unit=15,file='RUNDATA/LSM/shdmax.txt',form='formatted')
-      READ(15,*) shdmax
-      CLOSE(15)
-
-      OPEN(unit=15,file='RUNDATA/LSM/shdmin.txt',form='formatted')
-      READ(15,*) shdmin
-      CLOSE(15)
-
-      OPEN(unit=15,file='RUNDATA/LSM/slope.txt',form='formatted')
-      READ(15,*) slope
-      CLOSE(15)
-
-      OPEN(unit=15,file='RUNDATA/LSM/soil.txt',form='formatted')
-      READ(15,*) soil
-      CLOSE(15)
-
-      DO I=1,mi_glob
-      DO J=1,mj_glob
-      TMP=DBLE(hgt(I,J))
-
-      IF (TMP .GT. 0.) HX(I,J) = 2.
-
-      DO K=2,NK1
-      IF(TMP.GE.ZZ(K))HX(I,J)=K+NINT((TMP-ZZ(K))/(ZZ(K+1)-ZZ(K)))
-
+      
+      DO J=1,MJ_GLOB
+      YM(J)=J
       ENDDO
-      IF(HX(I,J).LT.0)HX(I,J)=0
 
+      DO I=1,MI_GLOB
+      XM(I)=I
       ENDDO
-      ENDDO
+
+!      HX = 1
+      DO 500 J = 1,MJ_GLOB
+      DO 500 I = 1,MI_GLOB
+
+!      xt(I) = I * DX
+!      yt(I) = J * DYNEW
+      if (I .gt. 128 .and. I .lt. 384) then
+      hx(i,j) = INT(max((-(abs(256-real(I)))/1024+.125)/.125*10,0.))+1
+      hx(I,J) = max(hx(I,J), 2.)
+      LU(I,J) = 7
+      alb(I,J) = 19.
+      grf(I,J) = 80.
+      lai(I,J) = 4.
+      SHDMAX(I,J) = 80.
+      SHDMIN(I,J) = 80.
+      SLOPE(I,J) = 1
+      SOIL(I,J) = 1
+      elseif (I .gt. 64 .and. I .lt. 449) then
+      hx(I,J) = 2.
+      LU(I,J) = 1
+      alb(I,J) = 15.
+      grf(I,J) = 10.
+      lai(I,J) = 4.
+      SHDMAX(I,J) = 10.
+      SHDMIN(I,J) = 10.
+      SLOPE(I,J) = 1
+      SOIL(I,J) = 1
+      else
+      hx(I,J) = 1
+      LU(I,J) = 16
+      alb(I,J) = 15.
+      grf(I,J) = 10.
+      lai(I,J) = 4.
+      SHDMAX(I,J) = 10.
+      SHDMIN(I,J) = 10.
+      SLOPE(I,J) = 1
+      SOIL(I,J) = 1
+      endif 
+   
+ 
+  500 CONTINUE
+
+
+      DO 600 I = 1, MI_GLOB
+  600 XT (I) = I*DX
+
+      DO 700 J = 1,MJ_GLOB
+  700 YT (J) = J*DYNEW
+
 
       ENDIF
 
@@ -275,11 +275,8 @@ C      TMP = MAX(TMP,DATA(IP,JP))
       ierr = nf_create('TOPO.nc', NF_64BIT_OFFSET, ncid)
       print*,'ERRor', nf_strerror(ierr)
 
-
-      ierr = nf_def_dim(ncid, "lat", MJ_GLOB, idy)
-      print*,'ERRor', nf_strerror(ierr)
-
-      ierr = nf_def_dim(ncid, "lon", MI_GLOB, idx)
+      ierr = nf_def_dim(ncid, "y", MJ_GLOB, idy)
+      ierr = nf_def_dim(ncid, "x", MI_GLOB, idx)
       print*,'ERRor', nf_strerror(ierr)
 
       nlid(2) = idy
@@ -355,7 +352,5 @@ C      TMP = MAX(TMP,DATA(IP,JP))
 
       ierr = nf_close(ncid)
       print*,'ERRor', nf_strerror(ierr)
-
-      
 
       end
